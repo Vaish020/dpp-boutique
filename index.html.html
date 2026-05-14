@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Maison Élyse — The Virtual Boutique</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,600;0,700;1,400;1,600&family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.9/babel.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:#FAF7F2}
+input[type="range"]{-webkit-appearance:none;appearance:none;width:100%;height:6px;border-radius:4px;outline:none;cursor:pointer}
+input[type="range"]::-webkit-slider-thumb{-webkit-appearance:none;width:22px;height:22px;border-radius:50%;background:#2C1A2E;border:3px solid #C9A96E;cursor:pointer;margin-top:-8px}
+input[type="range"]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#2C1A2E;border:3px solid #C9A96E;cursor:pointer}
+button:active{transform:scale(0.97)}
+</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useEffect, useRef } = React;
+
+// ─── CONSTANTS ──────────────────────────────────────────────────
+const GOLD="#C9A96E",GOLD_LIGHT="#E8D5B0",PLUM="#2C1A2E",PLUM_LIGHT="#3D2A40",CREAM="#FAF7F2",CREAM_DARK="#F0EBE3",INK="#1A1A1A",INK_LIGHT="#5A5A5A",GREEN_ACCENT="#2D6A4F",GREEN_LIGHT="#D8F3DC",RED_SOFT="#C1121F",BLUE_DPP="#1B4965",BLUE_DPP_LIGHT="#CAE9FF";
+const DISPLAY="'Playfair Display', serif",BODY="'DM Sans', sans-serif";
+
+const PRODUCT={name:"Maison Élyse — The Aurelia Gown",tagline:"Hand-finished silk evening dress",price:"AED 12,400",originalPrice:"AED 14,800",sizes:["XS","S","M","L"],image:"👗"};
+
+const DPP_DATA={
+  origin:{label:"Material Origin",icon:"🌿",items:[{key:"Primary Fabric",value:"100% Grade-6A Mulberry Silk",verified:true},{key:"Source",value:"Certified organic farm, Suzhou, China",verified:true},{key:"OEKO-TEX® Standard 100",value:"Certificate #HK-24-0891",verified:true},{key:"Dye Process",value:"GOTS-certified natural botanical dyes",verified:true}]},
+  production:{label:"Production & Labour",icon:"🧵",items:[{key:"Atelier",value:"Maison Élyse Atelier, Milan, Italy",verified:true},{key:"Artisan ID",value:"#ME-ART-2247 — Lucia Fontana (12 yrs exp.)",verified:true},{key:"Fair Wage Audit",value:"SA8000:2024 certified — last audit: Feb 2026",verified:true},{key:"Production Hours",value:"38 hours hand-finishing per garment",verified:true}]},
+  environment:{label:"Environmental Impact",icon:"🌍",items:[{key:"Carbon Footprint",value:"4.2 kg CO₂e (vs. industry avg 33.4 kg)",verified:true},{key:"Water Usage",value:"1,240 L (vs. industry avg 10,000+ L)",verified:true},{key:"Waste Recovery",value:"97% fabric waste recycled via closed-loop",verified:true},{key:"Packaging",value:"100% biodegradable, FSC-certified box",verified:true}]},
+  blockchain:{label:"Blockchain Verification",icon:"🔗",items:[{key:"Ledger",value:"Ethereum L2 — Immutable record",verified:true},{key:"Token ID",value:"0x7a3f…e91c — Minted 14 Mar 2026",verified:true},{key:"Supply Chain Nodes",value:"6 verified checkpoints, all timestamped",verified:true},{key:"Anti-Counterfeit",value:"NFC tag embedded — tap to verify authenticity",verified:true}]}
+};
+
+const CONSTRUCTS=[
+  {id:"greenwash",title:"Perceived Greenwashing Risk",ref:"(Adapted from Pimonenko et al., 2020; Mulenga et al., 2025)",items:["The sustainability claims on this product page seem genuinely trustworthy.","I feel confident that the brand is not exaggerating its environmental credentials.","The information provided is specific enough for me to verify the claims myself.","This product page makes me less worried about being misled by greenwashing."]},
+  {id:"csr_auth",title:"Perceived CSR Authenticity",ref:"(Adapted from Cheah et al., 2023; Hossain et al., 2025)",items:["This brand's sustainability efforts appear to be driven by genuine ethical concern rather than marketing strategy.","I believe this brand would maintain its sustainability practices even without public recognition.","The level of detail provided makes me feel the brand is truly committed to responsible practices.","I perceive this brand as authentically responsible, not just following a trend."]},
+  {id:"face_consc",title:"Face Consciousness",ref:"(Adapted from Li et al., 2025; Munir, 2020)",items:["It is important to me that my luxury purchases reflect positively on my social image.","I would feel proud to tell others that this product is verified sustainable.","Owning a transparently sustainable luxury item enhances my social status.","I consider how others perceive my fashion choices when making purchasing decisions."]},
+  {id:"trust",title:"Brand Trust & Resonance",ref:"(Adapted from Berger, 2019; Cheah et al., 2023)",items:["After viewing this product page, I trust this brand more than before.","I feel an emotional connection to a brand that provides this level of transparency.","I would recommend this brand to friends or family based on what I've seen.","This brand's approach to sustainability makes me feel it deserves a premium price."]},
+  {id:"social_share",title:"Social Sharing Likelihood",ref:"(Proxy for Face Consciousness — Berger, 2019)",items:["I would share information about this product's sustainability credentials on my social media.","I would show the product's digital passport to friends when discussing my purchase.","I feel this product's transparency story is worth talking about publicly."]}
+];
+
+const LIKERT_LABELS=["Strongly\nDisagree","Disagree","Somewhat\nDisagree","Neutral","Somewhat\nAgree","Agree","Strongly\nAgree"];
+
+const DEMO_QUESTIONS=[
+  {id:"age",q:"What is your age group?",options:["18–24","25–30","31–36","37–44","45+"]},
+  {id:"gender",q:"What is your gender?",options:["Male","Female","Non-binary","Prefer not to say"]},
+  {id:"income",q:"What is your approximate monthly household income (AED)?",options:["Below 15,000","15,000–30,000","30,001–50,000","50,001–100,000","Above 100,000"]},
+  {id:"luxury_freq",q:"How often do you purchase luxury fashion items?",options:["Rarely / Never","Once a year","2–4 times a year","Monthly or more"]},
+  {id:"sust_awareness",q:"How would you rate your awareness of sustainability issues in fashion?",options:["Very Low","Low","Moderate","High","Very High"]}
+];
+
+// ══════════════════════════════════════════════════════════════════
+// ─── CONFIGURATION — FILL THESE IN (see Setup Guide) ────────────
+// ══════════════════════════════════════════════════════════════════
+
+// 1. Your Google Form ID
+const GOOGLE_FORM_ID = "1FAIpQLSeoSH6752ydgloET2-xXpz7e916pAHrbRMtVHNPyHwv8p58FQ";
+
+// 2. Entry IDs mapped from pre-filled link
+const ENTRY_IDS = {
+  timestamp:       "1255172492",
+  scenario:        "1043340107",
+  wtp:             "951789574",
+  demo_age:        "1926507703",
+  demo_gender:     "143650069",
+  demo_income:     "1998717588",
+  demo_luxury:     "1298277342",
+  demo_sust:       "369190661",
+  gw0:             "1193443510",
+  gw1:             "1567158901",
+  gw2:             "1799641350",
+  gw3:             "1955020389",
+  csr0:            "1468979413",
+  csr1:            "565395623",
+  csr2:            "672317171",
+  csr3:            "285323238",
+  fc0:             "559155278",
+  fc1:             "900491874",
+  fc2:             "1647991424",
+  fc3:             "1143529553",
+  bt0:             "48465494",
+  bt1:             "1232014681",
+  bt2:             "1316806728",
+  bt3:             "672809816",
+  ss0:             "1544846713",
+  ss1:             "2093607985",
+  ss2:             "579026825",
+};
+
+// ══════════════════════════════════════════════════════════════════
+
+// ─── HELPER: Submit via Google Forms pre-fill URL ───────────────
+function submitToGoogleForm(data) {
+  const isConfigured = GOOGLE_FORM_ID !== "YOUR_FORM_ID_HERE" && !ENTRY_IDS.timestamp.startsWith("ENTRY_ID");
+  if (!isConfigured) return "not_configured";
+
+  try {
+    const E = ENTRY_IDS;
+    const params = new URLSearchParams({
+      ["entry." + E.timestamp]: data.timestamp,
+      ["entry." + E.scenario]: data.scenario,
+      ["entry." + E.wtp]: String(data.wtp_premium_pct),
+      ["entry." + E.demo_age]: data.demographics?.age || "",
+      ["entry." + E.demo_gender]: data.demographics?.gender || "",
+      ["entry." + E.demo_income]: data.demographics?.income || "",
+      ["entry." + E.demo_luxury]: data.demographics?.luxury_freq || "",
+      ["entry." + E.demo_sust]: data.demographics?.sust_awareness || "",
+      ["entry." + E.gw0]: String(data.likert?.greenwash_0 || ""),
+      ["entry." + E.gw1]: String(data.likert?.greenwash_1 || ""),
+      ["entry." + E.gw2]: String(data.likert?.greenwash_2 || ""),
+      ["entry." + E.gw3]: String(data.likert?.greenwash_3 || ""),
+      ["entry." + E.csr0]: String(data.likert?.csr_auth_0 || ""),
+      ["entry." + E.csr1]: String(data.likert?.csr_auth_1 || ""),
+      ["entry." + E.csr2]: String(data.likert?.csr_auth_2 || ""),
+      ["entry." + E.csr3]: String(data.likert?.csr_auth_3 || ""),
+      ["entry." + E.fc0]: String(data.likert?.face_consc_0 || ""),
+      ["entry." + E.fc1]: String(data.likert?.face_consc_1 || ""),
+      ["entry." + E.fc2]: String(data.likert?.face_consc_2 || ""),
+      ["entry." + E.fc3]: String(data.likert?.face_consc_3 || ""),
+      ["entry." + E.bt0]: String(data.likert?.trust_0 || ""),
+      ["entry." + E.bt1]: String(data.likert?.trust_1 || ""),
+      ["entry." + E.bt2]: String(data.likert?.trust_2 || ""),
+      ["entry." + E.bt3]: String(data.likert?.trust_3 || ""),
+      ["entry." + E.ss0]: String(data.likert?.social_share_0 || ""),
+      ["entry." + E.ss1]: String(data.likert?.social_share_1 || ""),
+      ["entry." + E.ss2]: String(data.likert?.social_share_2 || ""),
+    });
+
+    const url = `https://docs.google.com/forms/d/e/${GOOGLE_FORM_ID}/formResponse?${params.toString()}&submit=Submit`;
+    
+    // Submit silently via hidden iframe (no redirect for respondent)
+    const iframe = document.createElement("iframe");
+    iframe.style.display = "none";
+    iframe.name = "gform_submit_" + Date.now();
+    document.body.appendChild(iframe);
+    iframe.src = url;
+
+    // Clean up after 5 seconds
+    setTimeout(() => { try { document.body.removeChild(iframe); } catch(e){} }, 5000);
+
+    return "sent";
+  } catch(e) {
+    console.error("Google Form submit failed:", e);
+    return "failed";
+  }
+}
+
+function saveResponse(data) {
+  try {
+    const existing = JSON.parse(localStorage.getItem("dpp_responses") || "[]");
+    existing.push(data);
+    localStorage.setItem("dpp_responses", JSON.stringify(existing));
+  } catch(e) { console.error("localStorage save failed:", e); }
+}
+
+function downloadCSV() {
+  try {
+    const responses = JSON.parse(localStorage.getItem("dpp_responses") || "[]");
+    if (!responses.length) { alert("No responses collected yet."); return; }
+    const allKeys = new Set();
+    const flat = responses.map(r => {
+      const row = { timestamp: r.timestamp, scenario: r.scenario, wtp_premium_pct: r.wtp_premium_pct };
+      Object.entries(r.demographics || {}).forEach(([k,v]) => { row["demo_"+k] = v; allKeys.add("demo_"+k); });
+      Object.entries(r.likert || {}).forEach(([k,v]) => { row["likert_"+k] = v; allKeys.add("likert_"+k); });
+      return row;
+    });
+    const headers = ["timestamp","scenario","wtp_premium_pct",...[...allKeys].sort()];
+    const csv = [headers.join(","), ...flat.map(r => headers.map(h => JSON.stringify(r[h] || "")).join(","))].join("\n");
+    const blob = new Blob([csv], {type:"text/csv"});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = `DPP_Responses_${new Date().toISOString().slice(0,10)}.csv`; a.click();
+    URL.revokeObjectURL(url);
+  } catch(e) { alert("Export error: "+e.message); }
+}
+
+// ─── COMPONENTS ────────────────────────────────────────────────
+function GoldDivider({width=60,my=16}){return <div style={{width,height:2,background:`linear-gradient(90deg,transparent,${GOLD},transparent)`,margin:`${my}px auto`}}/>}
+function Badge({children,color=GOLD,bg="transparent"}){return <span style={{display:"inline-block",padding:"3px 10px",fontSize:10,fontFamily:BODY,fontWeight:600,letterSpacing:2,textTransform:"uppercase",color,border:`1px solid ${color}`,borderRadius:2,background:bg}}>{children}</span>}
+
+function VerifiedRow({label,value,verified}){
+  return <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",padding:"8px 0",borderBottom:`1px solid ${CREAM_DARK}`,gap:12}}>
+    <span style={{fontSize:12,fontFamily:BODY,color:INK_LIGHT,minWidth:120,fontWeight:500}}>{label}</span>
+    <span style={{fontSize:12,fontFamily:BODY,color:INK,textAlign:"right",flex:1}}>{value}{verified&&<span style={{marginLeft:6,color:GREEN_ACCENT,fontSize:13}}>✓</span>}</span>
+  </div>
+}
+
+function DPPSection({section,isOpen,onToggle}){
+  return <div style={{marginBottom:8,border:`1px solid ${isOpen?GOLD:CREAM_DARK}`,borderRadius:6,overflow:"hidden",transition:"border-color 0.3s"}}>
+    <button onClick={onToggle} style={{width:"100%",display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",background:isOpen?`linear-gradient(135deg,${PLUM},${PLUM_LIGHT})`:CREAM,border:"none",cursor:"pointer",transition:"all 0.3s"}}>
+      <span style={{fontSize:14,fontFamily:BODY,fontWeight:600,color:isOpen?CREAM:INK}}>{section.icon} {section.label}</span>
+      <span style={{fontSize:12,color:isOpen?GOLD:INK_LIGHT,transform:isOpen?"rotate(180deg)":"rotate(0)",transition:"transform 0.3s"}}>▼</span>
+    </button>
+    {isOpen&&<div style={{padding:"8px 16px 12px",background:"#fff"}}>
+      {section.items.map((item,i)=><VerifiedRow key={i} label={item.key} value={item.value} verified={item.verified}/>)}
+      <div style={{marginTop:10,display:"flex",alignItems:"center",gap:6,padding:"6px 10px",background:GREEN_LIGHT,borderRadius:4}}>
+        <span style={{fontSize:11,fontFamily:BODY,color:GREEN_ACCENT,fontWeight:600}}>🔒 Blockchain-verified · Immutable record</span>
+      </div>
+    </div>}
+  </div>
+}
+
+function ScenarioA({onComplete}){
+  const[selectedSize,setSelectedSize]=useState(null);
+  return <div style={{maxWidth:520,margin:"0 auto"}}>
+    <div style={{background:`linear-gradient(160deg,#F5E6F0,${CREAM_DARK})`,borderRadius:12,padding:"40px 20px",textAlign:"center",marginBottom:20}}><div style={{fontSize:120,lineHeight:1}}>{PRODUCT.image}</div></div>
+    <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}><Badge color={GREEN_ACCENT} bg={GREEN_LIGHT}>🌱 Eco-Friendly</Badge><Badge color={GREEN_ACCENT} bg={GREEN_LIGHT}>♻️ Conscious Collection</Badge><Badge color={GREEN_ACCENT} bg={GREEN_LIGHT}>🌿 Sustainable</Badge></div>
+    <h2 style={{fontFamily:DISPLAY,fontSize:24,color:INK,margin:0}}>{PRODUCT.name}</h2>
+    <p style={{fontFamily:BODY,fontSize:13,color:INK_LIGHT,margin:"4px 0 12px"}}>{PRODUCT.tagline}</p>
+    <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:16}}><span style={{fontFamily:DISPLAY,fontSize:26,fontWeight:700,color:INK}}>{PRODUCT.price}</span><span style={{fontFamily:BODY,fontSize:14,color:INK_LIGHT,textDecoration:"line-through"}}>{PRODUCT.originalPrice}</span></div>
+    <div style={{padding:20,background:GREEN_LIGHT,borderRadius:8,marginBottom:20,borderLeft:`4px solid ${GREEN_ACCENT}`}}>
+      <h3 style={{fontFamily:BODY,fontSize:14,fontWeight:700,color:GREEN_ACCENT,margin:"0 0 10px"}}>🌿 Our Sustainability Commitment</h3>
+      <p style={{fontFamily:BODY,fontSize:13,color:INK_LIGHT,lineHeight:1.7,margin:0}}>At Maison Élyse, we are committed to creating fashion that respects our planet. This garment is part of our <strong>Conscious Collection</strong>, made with <em>eco-friendly materials</em> and <em>sustainable practices</em>. We believe in a better future for fashion.</p>
+      <p style={{fontFamily:BODY,fontSize:12,color:INK_LIGHT,marginTop:10,fontStyle:"italic"}}>"Crafted with care for you and the environment."</p>
+    </div>
+    <div style={{marginBottom:20}}><p style={{fontFamily:BODY,fontSize:12,fontWeight:600,color:INK,marginBottom:8}}>SELECT SIZE</p><div style={{display:"flex",gap:8}}>{PRODUCT.sizes.map(s=><button key={s} onClick={()=>setSelectedSize(s)} style={{width:48,height:48,border:selectedSize===s?`2px solid ${PLUM}`:`1px solid ${CREAM_DARK}`,borderRadius:6,background:selectedSize===s?PLUM:"#fff",color:selectedSize===s?CREAM:INK,fontFamily:BODY,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>{s}</button>)}</div></div>
+    <button onClick={onComplete} style={{width:"100%",padding:"16px 0",background:PLUM,color:CREAM,border:"none",borderRadius:8,fontFamily:BODY,fontSize:15,fontWeight:600,letterSpacing:1,cursor:"pointer"}}>ADD TO BAG</button>
+    <p style={{fontFamily:BODY,fontSize:11,color:INK_LIGHT,textAlign:"center",marginTop:12}}>Free delivery to Dubai · 14-day returns</p>
+  </div>
+}
+
+function ScenarioB({onComplete}){
+  const[selectedSize,setSelectedSize]=useState(null);
+  const[openSections,setOpenSections]=useState({origin:true});
+  const toggleSection=(key)=>setOpenSections(prev=>({...prev,[key]:!prev[key]}));
+  return <div style={{maxWidth:520,margin:"0 auto"}}>
+    <div style={{background:`linear-gradient(160deg,#F5E6F0,${CREAM_DARK})`,borderRadius:12,padding:"40px 20px",textAlign:"center",marginBottom:20,position:"relative"}}><div style={{fontSize:120,lineHeight:1}}>{PRODUCT.image}</div><div style={{position:"absolute",top:12,right:12,background:BLUE_DPP,color:"#fff",padding:"6px 12px",borderRadius:20,fontSize:10,fontFamily:BODY,fontWeight:700,letterSpacing:1,display:"flex",alignItems:"center",gap:5}}>🔗 DPP VERIFIED</div></div>
+    <div style={{display:"flex",gap:8,marginBottom:16,flexWrap:"wrap"}}><Badge color={BLUE_DPP} bg={BLUE_DPP_LIGHT}>🔗 Blockchain Verified</Badge><Badge color={GREEN_ACCENT} bg={GREEN_LIGHT}>✓ OEKO-TEX® 100</Badge><Badge color={GREEN_ACCENT} bg={GREEN_LIGHT}>✓ SA8000 Fair Labour</Badge></div>
+    <h2 style={{fontFamily:DISPLAY,fontSize:24,color:INK,margin:0}}>{PRODUCT.name}</h2>
+    <p style={{fontFamily:BODY,fontSize:13,color:INK_LIGHT,margin:"4px 0 12px"}}>{PRODUCT.tagline}</p>
+    <div style={{display:"flex",alignItems:"baseline",gap:10,marginBottom:16}}><span style={{fontFamily:DISPLAY,fontSize:26,fontWeight:700,color:INK}}>{PRODUCT.price}</span><span style={{fontFamily:BODY,fontSize:14,color:INK_LIGHT,textDecoration:"line-through"}}>{PRODUCT.originalPrice}</span></div>
+    <div style={{marginBottom:20,padding:16,background:"#fff",border:`2px solid ${GOLD}`,borderRadius:10}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:12}}><div><h3 style={{fontFamily:DISPLAY,fontSize:16,fontWeight:700,color:INK,margin:0}}>Digital Product Passport</h3><p style={{fontFamily:BODY,fontSize:11,color:INK_LIGHT,margin:"2px 0 0"}}>Item-level traceability · Tap each section to explore</p></div><div style={{width:36,height:36,borderRadius:"50%",background:`linear-gradient(135deg,${GOLD},${GOLD_LIGHT})`,display:"flex",alignItems:"center",justifyContent:"center",fontSize:16}}>🔐</div></div>
+      <GoldDivider width={200} my={8}/>
+      {Object.entries(DPP_DATA).map(([key,section])=><DPPSection key={key} section={section} isOpen={!!openSections[key]} onToggle={()=>toggleSection(key)}/>)}
+      <div style={{marginTop:12,padding:12,background:`linear-gradient(135deg,${PLUM},${PLUM_LIGHT})`,borderRadius:6}}>
+        <p style={{fontFamily:BODY,fontSize:11,fontWeight:600,color:GOLD,letterSpacing:1,margin:"0 0 8px",textTransform:"uppercase"}}>Environmental Impact vs. Industry Average</p>
+        <div style={{display:"flex",gap:12}}>
+          {[{label:"Carbon",value:"87%",sub:"lower"},{label:"Water",value:"88%",sub:"less"},{label:"Waste",value:"97%",sub:"recovered"}].map(stat=><div key={stat.label} style={{flex:1,textAlign:"center"}}><div style={{fontFamily:DISPLAY,fontSize:22,fontWeight:700,color:CREAM}}>{stat.value}</div><div style={{fontFamily:BODY,fontSize:10,color:GOLD_LIGHT}}>{stat.sub} {stat.label.toLowerCase()}</div></div>)}
+        </div>
+      </div>
+    </div>
+    <div style={{marginBottom:20}}><p style={{fontFamily:BODY,fontSize:12,fontWeight:600,color:INK,marginBottom:8}}>SELECT SIZE</p><div style={{display:"flex",gap:8}}>{PRODUCT.sizes.map(s=><button key={s} onClick={()=>setSelectedSize(s)} style={{width:48,height:48,border:selectedSize===s?`2px solid ${PLUM}`:`1px solid ${CREAM_DARK}`,borderRadius:6,background:selectedSize===s?PLUM:"#fff",color:selectedSize===s?CREAM:INK,fontFamily:BODY,fontSize:13,fontWeight:600,cursor:"pointer",transition:"all 0.2s"}}>{s}</button>)}</div></div>
+    <button onClick={onComplete} style={{width:"100%",padding:"16px 0",background:PLUM,color:CREAM,border:"none",borderRadius:8,fontFamily:BODY,fontSize:15,fontWeight:600,letterSpacing:1,cursor:"pointer"}}>ADD TO BAG</button>
+    <p style={{fontFamily:BODY,fontSize:11,color:INK_LIGHT,textAlign:"center",marginTop:12}}>Free delivery to Dubai · 14-day returns · NFC authenticity tag included</p>
+  </div>
+}
+
+function WTPSlider({value,onChange}){
+  const pct=((value)/30)*100;
+  return <div style={{padding:24,background:"#fff",borderRadius:10,border:`1px solid ${CREAM_DARK}`,marginBottom:20}}>
+    <h3 style={{fontFamily:DISPLAY,fontSize:18,color:INK,margin:"0 0 6px"}}>Willingness to Pay</h3>
+    <p style={{fontFamily:BODY,fontSize:12,color:INK_LIGHT,margin:"0 0 20px"}}>Given what you saw on the product page, what is the <strong>maximum additional percentage</strong> you would be willing to pay for this product beyond its listed price of {PRODUCT.price}?</p>
+    <input type="range" min={0} max={30} value={value} onChange={e=>onChange(Number(e.target.value))} style={{width:"100%",background:`linear-gradient(to right,${GOLD} ${pct}%,${CREAM_DARK} ${pct}%)`}}/>
+    <div style={{display:"flex",justifyContent:"space-between",marginTop:6}}>
+      <span style={{fontFamily:BODY,fontSize:10,color:INK_LIGHT}}>0% (No extra)</span>
+      <span style={{fontFamily:DISPLAY,fontSize:22,fontWeight:700,color:PLUM}}>+{value}%</span>
+      <span style={{fontFamily:BODY,fontSize:10,color:INK_LIGHT}}>+30%</span>
+    </div>
+    <p style={{fontFamily:BODY,fontSize:12,color:GOLD,textAlign:"center",marginTop:8,fontWeight:600}}>≈ AED {(12400*(1+value/100)).toLocaleString("en-AE",{maximumFractionDigits:0})}</p>
+  </div>
+}
+
+function LikertBlock({construct,responses,onChange}){
+  return <div style={{padding:20,background:"#fff",borderRadius:10,border:`1px solid ${CREAM_DARK}`,marginBottom:16}}>
+    <h3 style={{fontFamily:DISPLAY,fontSize:16,color:INK,margin:"0 0 2px"}}>{construct.title}</h3>
+    <p style={{fontFamily:BODY,fontSize:10,color:INK_LIGHT,margin:"0 0 16px",fontStyle:"italic"}}>{construct.ref}</p>
+    {construct.items.map((item,idx)=>{
+      const key=`${construct.id}_${idx}`;
+      return <div key={idx} style={{marginBottom:16,paddingBottom:16,borderBottom:idx<construct.items.length-1?`1px solid ${CREAM_DARK}`:"none"}}>
+        <p style={{fontFamily:BODY,fontSize:13,color:INK,margin:"0 0 10px",lineHeight:1.5}}>{idx+1}. {item}</p>
+        <div style={{display:"flex",justifyContent:"space-between",gap:4}}>
+          {LIKERT_LABELS.map((label,li)=><button key={li} onClick={()=>onChange(key,li+1)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:4,padding:"6px 2px",border:responses[key]===li+1?`2px solid ${PLUM}`:`1px solid ${CREAM_DARK}`,borderRadius:6,background:responses[key]===li+1?PLUM:"#fff",cursor:"pointer",transition:"all 0.15s",minWidth:0}}>
+            <span style={{fontSize:14,fontWeight:700,fontFamily:BODY,color:responses[key]===li+1?CREAM:INK}}>{li+1}</span>
+            <span style={{fontSize:8,fontFamily:BODY,color:responses[key]===li+1?GOLD_LIGHT:INK_LIGHT,textAlign:"center",lineHeight:1.2,whiteSpace:"pre-line"}}>{label}</span>
+          </button>)}
+        </div>
+      </div>
+    })}
+  </div>
+}
+
+function DemographicsBlock({responses,onChange}){
+  return <div style={{padding:20,background:"#fff",borderRadius:10,border:`1px solid ${CREAM_DARK}`,marginBottom:16}}>
+    <h3 style={{fontFamily:DISPLAY,fontSize:16,color:INK,margin:"0 0 4px"}}>Demographic Information</h3>
+    <p style={{fontFamily:BODY,fontSize:11,color:INK_LIGHT,margin:"0 0 16px"}}>Your responses are anonymous and used only for research segmentation.</p>
+    {DEMO_QUESTIONS.map(dq=><div key={dq.id} style={{marginBottom:18}}>
+      <p style={{fontFamily:BODY,fontSize:13,fontWeight:600,color:INK,margin:"0 0 8px"}}>{dq.q}</p>
+      <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+        {dq.options.map(opt=><button key={opt} onClick={()=>onChange(dq.id,opt)} style={{padding:"8px 14px",borderRadius:20,fontFamily:BODY,fontSize:12,cursor:"pointer",transition:"all 0.2s",border:responses[dq.id]===opt?`2px solid ${PLUM}`:`1px solid ${CREAM_DARK}`,background:responses[dq.id]===opt?PLUM:"#fff",color:responses[dq.id]===opt?CREAM:INK,fontWeight:responses[dq.id]===opt?600:400}}>{opt}</button>)}
+      </div>
+    </div>)}
+  </div>
+}
+
+function CompletionScreen({scenario,data,responseCount,sheetStatus}){
+  return <div style={{maxWidth:520,margin:"0 auto",textAlign:"center",padding:"40px 20px"}}>
+    <div style={{fontSize:64,marginBottom:16}}>✓</div>
+    <h2 style={{fontFamily:DISPLAY,fontSize:28,color:INK,margin:"0 0 8px"}}>Thank You</h2>
+    <p style={{fontFamily:BODY,fontSize:14,color:INK_LIGHT,lineHeight:1.7}}>Your responses have been recorded successfully.</p>
+
+    {/* Submission status */}
+    {sheetStatus==="sent"&&<div style={{marginTop:16,padding:12,background:GREEN_LIGHT,borderRadius:8,border:`1px solid ${GREEN_ACCENT}`}}>
+      <p style={{fontFamily:BODY,fontSize:12,color:GREEN_ACCENT,fontWeight:600,margin:0}}>✓ Response submitted to Google Forms</p>
+    </div>}
+    {sheetStatus==="failed"&&<div style={{marginTop:16,padding:12,background:"#FFF0F0",borderRadius:8,border:"1px solid #C1121F"}}>
+      <p style={{fontFamily:BODY,fontSize:12,color:RED_SOFT,fontWeight:600,margin:0}}>Response saved locally (Google Forms submission failed)</p>
+    </div>}
+    {sheetStatus==="not_configured"&&<div style={{marginTop:16,padding:12,background:"#FFF8E1",borderRadius:8,border:"1px solid #FFD54F"}}>
+      <p style={{fontFamily:BODY,fontSize:12,color:"#E65100",fontWeight:600,margin:0}}>⚠ Google Form not configured — response saved locally only</p>
+    </div>}
+
+    <GoldDivider width={100} my={20}/>
+    <p style={{fontFamily:BODY,fontSize:12,color:INK_LIGHT}}>This simulation is part of an International Business Research project at SP Jain School of Global Management, investigating trust-weighted transparency frameworks for sustainable luxury fashion brands in the Dubai market.</p>
+
+    {/* Researcher panel — hidden from respondents, accessed via ?admin=true URL param */}
+    {new URLSearchParams(window.location.search).get("admin")==="true"&&<div style={{marginTop:24,padding:16,background:"#FFF8E1",borderRadius:8,border:"1px solid #FFD54F"}}>
+      <p style={{fontFamily:BODY,fontSize:11,fontWeight:700,color:INK,marginBottom:8}}>🔬 Researcher Panel — {responseCount} local response(s)</p>
+      <p style={{fontFamily:BODY,fontSize:10,color:INK_LIGHT,margin:"0 0 12px"}}>Google Forms: {GOOGLE_FORM_ID !== "YOUR_FORM_ID_HERE" ? "✓ Configured" : "✗ Not set — edit GOOGLE_FORM_ID and ENTRY_IDS in the HTML file"}</p>
+      <button onClick={downloadCSV} style={{padding:"10px 24px",background:PLUM,color:CREAM,border:"none",borderRadius:6,fontFamily:BODY,fontSize:12,fontWeight:600,cursor:"pointer",marginRight:8}}>📥 Download Local CSV</button>
+      <button onClick={()=>{if(confirm("Clear ALL locally stored responses?")){localStorage.removeItem("dpp_responses");alert("Cleared.")}}} style={{padding:"10px 24px",background:"#fff",color:RED_SOFT,border:`1px solid ${RED_SOFT}`,borderRadius:6,fontFamily:BODY,fontSize:12,fontWeight:600,cursor:"pointer"}}>🗑 Clear Local Data</button>
+    </div>}
+  </div>
+}
+
+// ─── MAIN APP ──────────────────────────────────────────────────
+function App(){
+  const[phase,setPhase]=useState("intro");
+  const[scenario,setScenario]=useState(null);
+  const[wtp,setWtp]=useState(10);
+  const[likertResponses,setLikertResponses]=useState({});
+  const[demoResponses,setDemoResponses]=useState({});
+  const[consentChecked,setConsentChecked]=useState(false);
+  const[responseCount,setResponseCount]=useState(0);
+  const[sheetStatus,setSheetStatus]=useState(null); // null | "sending" | "sent" | "failed" | "no_url"
+  const[submitting,setSubmitting]=useState(false);
+
+  useEffect(()=>{
+    setScenario(Math.random()<0.5?"A":"B");
+    try{const r=JSON.parse(localStorage.getItem("dpp_responses")||"[]");setResponseCount(r.length)}catch(e){}
+  },[]);
+
+  const scrollTop=()=>window.scrollTo({top:0,behavior:"smooth"});
+  const handleLikert=(key,val)=>setLikertResponses(prev=>({...prev,[key]:val}));
+  const handleDemo=(id,val)=>setDemoResponses(prev=>({...prev,[id]:val}));
+
+  const handleSubmit=async()=>{
+    if(submitting)return;
+    setSubmitting(true);
+    const allData={scenario,demographics:demoResponses,wtp_premium_pct:wtp,likert:likertResponses,timestamp:new Date().toISOString()};
+    // Save to localStorage as backup
+    saveResponse(allData);
+    setResponseCount(prev=>prev+1);
+    // Submit to Google Forms
+    const result = submitToGoogleForm(allData);
+    setSheetStatus(result); // "sent" | "failed" | "not_configured"
+    setPhase("complete");
+    scrollTop();
+  };
+
+  return <div style={{fontFamily:BODY,background:CREAM,minHeight:"100vh"}}>
+    {/* Header */}
+    <header style={{padding:"16px 20px",borderBottom:`1px solid ${CREAM_DARK}`,display:"flex",alignItems:"center",justifyContent:"space-between",background:"#fff"}}>
+      <div><h1 style={{fontFamily:DISPLAY,fontSize:18,fontWeight:700,color:INK,margin:0,letterSpacing:0.5}}>MAISON ÉLYSE</h1><p style={{fontFamily:BODY,fontSize:9,color:GOLD,letterSpacing:3,margin:0,textTransform:"uppercase"}}>Paris · Milan · Dubai</p></div>
+    </header>
+
+    <main style={{maxWidth:600,margin:"0 auto",padding:"24px 16px 60px"}}>
+      {/* INTRO */}
+      {phase==="intro"&&<div style={{textAlign:"center",padding:"40px 16px"}}>
+        <Badge>Research Simulation</Badge>
+        <h2 style={{fontFamily:DISPLAY,fontSize:30,color:INK,margin:"20px 0 8px",lineHeight:1.3}}>The Virtual Boutique</h2>
+        <p style={{fontFamily:DISPLAY,fontSize:16,color:GOLD,fontStyle:"italic",margin:"0 0 20px"}}>DPP Experimental Vignette Design</p>
+        <GoldDivider width={80}/>
+        <p style={{fontFamily:BODY,fontSize:13,color:INK_LIGHT,lineHeight:1.8,maxWidth:440,margin:"0 auto 24px"}}>You are about to browse a simulated luxury fashion product page. Please examine the product and its sustainability information carefully, as you would in a real online shopping experience. You will then be asked about your perceptions and purchase intentions.</p>
+        <div style={{padding:16,background:"#fff",borderRadius:8,border:`1px solid ${CREAM_DARK}`,textAlign:"left",marginBottom:24}}>
+          <p style={{fontFamily:BODY,fontSize:12,fontWeight:600,color:INK,margin:"0 0 6px"}}>What to expect:</p>
+          {["Browse a luxury product page (~2 min)","Answer questions about your experience (~5 min)","Provide brief demographic information (~1 min)"].map((step,i)=><p key={i} style={{fontFamily:BODY,fontSize:12,color:INK_LIGHT,margin:"4px 0",display:"flex",gap:8}}><span style={{color:GOLD,fontWeight:700}}>{i+1}.</span> {step}</p>)}
+        </div>
+        <button onClick={()=>{setPhase("consent");scrollTop()}} style={{padding:"14px 48px",background:PLUM,color:CREAM,border:"none",borderRadius:8,fontFamily:BODY,fontSize:14,fontWeight:600,letterSpacing:1,cursor:"pointer"}}>BEGIN</button>
+      </div>}
+
+      {/* CONSENT */}
+      {phase==="consent"&&<div style={{padding:"20px 0"}}>
+        <h2 style={{fontFamily:DISPLAY,fontSize:22,color:INK,margin:"0 0 16px"}}>Informed Consent</h2>
+        <div style={{padding:20,background:"#fff",borderRadius:10,border:`1px solid ${CREAM_DARK}`,marginBottom:20,fontSize:12,fontFamily:BODY,color:INK_LIGHT,lineHeight:1.8}}>
+          <p><strong style={{color:INK}}>Title:</strong> Bridging the Credibility Chasm: Defining a Trust-Weighted Transparency Framework for Sustainable Luxury Fashion Brands in the Dubai Market</p>
+          <p><strong style={{color:INK}}>Researcher:</strong> Vaishnavi Murugan (MS25MM074), SP Jain School of Global Management</p>
+          <p><strong style={{color:INK}}>Supervisor:</strong> Ms. Sanjukta Srivastava</p>
+          <GoldDivider width={120} my={12}/>
+          <p>Your participation in this study is entirely voluntary. You may withdraw at any time without penalty. Your responses will be kept anonymous and confidential, used solely for academic research purposes. No personally identifiable information will be collected or stored.</p>
+          <p>The study involves viewing a simulated luxury e-commerce product page and responding to questions about your perceptions, attitudes, and purchase intentions. The entire process takes approximately 8–10 minutes.</p>
+          <p>This research has been reviewed and approved by the SP Jain School of Global Management ethics review process.</p>
+        </div>
+        <label style={{display:"flex",gap:10,alignItems:"flex-start",cursor:"pointer",padding:16,background:consentChecked?`${PLUM}0A`:"#fff",border:`1px solid ${consentChecked?PLUM:CREAM_DARK}`,borderRadius:8,marginBottom:20,transition:"all 0.2s"}}>
+          <input type="checkbox" checked={consentChecked} onChange={e=>setConsentChecked(e.target.checked)} style={{marginTop:2,accentColor:PLUM,width:18,height:18}}/>
+          <span style={{fontFamily:BODY,fontSize:13,color:INK,lineHeight:1.6}}>I have read and understood the above information. I voluntarily agree to participate in this research study.</span>
+        </label>
+        <button onClick={()=>{if(consentChecked){setPhase("demographics");scrollTop()}}} disabled={!consentChecked} style={{width:"100%",padding:"14px 0",background:consentChecked?PLUM:CREAM_DARK,color:consentChecked?CREAM:INK_LIGHT,border:"none",borderRadius:8,fontFamily:BODY,fontSize:14,fontWeight:600,cursor:consentChecked?"pointer":"not-allowed"}}>CONTINUE</button>
+      </div>}
+
+      {/* DEMOGRAPHICS */}
+      {phase==="demographics"&&<div style={{padding:"20px 0"}}>
+        <Badge>Step 1 of 3</Badge>
+        <h2 style={{fontFamily:DISPLAY,fontSize:22,color:INK,margin:"12px 0 16px"}}>About You</h2>
+        <DemographicsBlock responses={demoResponses} onChange={handleDemo}/>
+        <button onClick={()=>{setPhase("scenario");scrollTop()}} style={{width:"100%",padding:"14px 0",background:PLUM,color:CREAM,border:"none",borderRadius:8,fontFamily:BODY,fontSize:14,fontWeight:600,cursor:"pointer"}}>VIEW PRODUCT →</button>
+      </div>}
+
+      {/* SCENARIO */}
+      {phase==="scenario"&&<div style={{padding:"20px 0"}}>
+        <Badge>Step 2 of 3</Badge>
+        <h2 style={{fontFamily:DISPLAY,fontSize:22,color:INK,margin:"12px 0 4px"}}>Browse the Product</h2>
+        <p style={{fontFamily:BODY,fontSize:12,color:INK_LIGHT,margin:"0 0 20px"}}>Please examine this product page carefully, including all sustainability information, as if you were genuinely considering a purchase.</p>
+        {scenario==="A"?<ScenarioA onComplete={()=>{setPhase("measures");scrollTop()}}/>:<ScenarioB onComplete={()=>{setPhase("measures");scrollTop()}}/>}
+        <div style={{marginTop:20,textAlign:"center"}}><button onClick={()=>{setPhase("measures");scrollTop()}} style={{padding:"12px 36px",background:"transparent",color:PLUM,border:`2px solid ${PLUM}`,borderRadius:8,fontFamily:BODY,fontSize:13,fontWeight:600,cursor:"pointer"}}>PROCEED TO QUESTIONS →</button></div>
+      </div>}
+
+      {/* MEASURES */}
+      {phase==="measures"&&<div style={{padding:"20px 0"}}>
+        <Badge>Step 3 of 3</Badge>
+        <h2 style={{fontFamily:DISPLAY,fontSize:22,color:INK,margin:"12px 0 4px"}}>Your Perceptions</h2>
+        <p style={{fontFamily:BODY,fontSize:12,color:INK_LIGHT,margin:"0 0 20px"}}>Based on what you just saw on the product page, please rate your agreement with each statement below using the 7-point scale.</p>
+        <WTPSlider value={wtp} onChange={setWtp}/>
+        {CONSTRUCTS.map(c=><LikertBlock key={c.id} construct={c} responses={likertResponses} onChange={handleLikert}/>)}
+        <button onClick={handleSubmit} disabled={submitting} style={{width:"100%",padding:"16px 0",background:submitting?INK_LIGHT:`linear-gradient(135deg,${PLUM},${PLUM_LIGHT})`,color:CREAM,border:"none",borderRadius:8,fontFamily:BODY,fontSize:15,fontWeight:700,letterSpacing:1,cursor:submitting?"not-allowed":"pointer",marginTop:8}}>{submitting?"SUBMITTING...":"SUBMIT RESPONSES"}</button>
+      </div>}
+
+      {/* COMPLETE */}
+      {phase==="complete"&&<CompletionScreen scenario={scenario} data={{}} responseCount={responseCount} sheetStatus={sheetStatus}/>}
+    </main>
+
+    {/* Progress bar */}
+    <div style={{position:"fixed",bottom:0,left:0,right:0,height:4,background:CREAM_DARK}}>
+      <div style={{height:"100%",background:`linear-gradient(90deg,${GOLD},${PLUM})`,transition:"width 0.5s ease",width:phase==="intro"?"0%":phase==="consent"?"15%":phase==="demographics"?"30%":phase==="scenario"?"55%":phase==="measures"?"80%":"100%"}}/>
+    </div>
+  </div>
+}
+
+ReactDOM.render(<App/>, document.getElementById("root"));
+</script>
+</body>
+</html>
